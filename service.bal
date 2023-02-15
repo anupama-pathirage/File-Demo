@@ -1,17 +1,41 @@
 import ballerina/http;
+import ballerinax/azure_storage_service.blobs as blobs;
 
-# A service representing a network-accessible API
-# bound to port `9090`.
+configurable string accessKeyOrSAS = ?;
+configurable string accountName = ?;
+configurable string containerName = ?;
+
+type Address record {
+    string streetaddress;
+    string city;
+    string state;
+    string postalcode;
+};
+
+type Personal record {
+    string firstname;
+    string lastname;
+    string gender;
+    int birthyear;
+    Address address;
+};
+
+type Employee record {
+    string empid;
+    Personal personal;
+};
+
+
+
+final blobs:BlobClient blobClient = check getStorageClient();
+
 service / on new http:Listener(9090) {
-
-    # A resource for generating greetings
-    # + name - the input string name
-    # + return - string name with hello message or error
-    resource function get greeting(string name) returns string|error {
-        // Send a response back to the caller.
-        if name is "" {
-            return error("name should not be empty!");
-        }
-        return "Hello, " + name;
+    
+    resource function post employees (@http:Payload Employee[] employees) returns json|error {
+        return blobClient->putBlob(containerName, "employees.json", "BlockBlob", employees.toJsonString().toBytes());
     }
 }
+
+
+function getStorageClient() returns blobs:BlobClient|error  => new({accessKeyOrSAS: accessKeyOrSAS, authorizationMethod: "accessKey", accountName: accountName});
+    
